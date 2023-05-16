@@ -76,10 +76,12 @@ void GridMap::initMap(ros::NodeHandle &nh)
 
   int buffer_size = mp_.map_voxel_num_(0) * mp_.map_voxel_num_(1) * mp_.map_voxel_num_(2);
 
+  //具体占据概率,初始化为-1.99243-0.01=-2.00243(空闲)
   md_.occupancy_buffer_ = vector<double>(buffer_size, mp_.clamp_min_log_ - mp_.unknown_flag_);
   md_.occupancy_buffer_inflate_ = vector<char>(buffer_size, 0);
-
+  //统计涉及到的体素的次数,占据和空闲均会+1
   md_.count_hit_and_miss_ = vector<short>(buffer_size, 0);
+  //统计涉及到的占据体素的次数,占据时会+1
   md_.count_hit_ = vector<short>(buffer_size, 0);
   md_.flag_rayend_ = vector<char>(buffer_size, -1);
   md_.flag_traverse_ = vector<char>(buffer_size, -1);
@@ -198,6 +200,7 @@ int GridMap::setCacheOccupancy(Eigen::Vector3d pos, int occ)
   return idx_ctns;
 }
 
+// 这一函数比较直观，就是通过相机投影模型，将图像坐标系上的点投影至相机坐标系，再通过相机的位姿将相机坐标系上点投影至世界坐标系，最后将所有点存入md.proj_points_这一vector容器中。
 void GridMap::projectDepthImage()
 {
   // md_.proj_points_.clear();
@@ -324,6 +327,11 @@ void GridMap::projectDepthImage()
   md_.last_depth_image_ = md_.depth_image_;
 }
 
+// 这一函数会对md.proj_points中的每一个点进行raycast流程。首先判断每一个点是否超出地图范围，是否超出ray_length，如果超出，就将此点重新赋值为一个允许的射线上最远的点。
+// 如果重新赋值，则利用setCacheOccupancy（）这一函数将md_.count_hit_and_miss_这一容器对应序列上的计数+1次。表示这一free空间被经过了一次。如果这一点是第一次被遍历，则应该把它加入到md_.cache_voxel这一容器中区
+// 如果不需要重新赋值，说明当前点是障碍物，则利用setCacheOccupancy将这一点在md_.count_hit容器中对应序列的位置计数+1。需要说明的是，不管当前点是不是障碍物，md_.count_hit_and_miss_容器对应位置处的计数都会被+1.
+// 当终点被setCache过后，就进入raycast环节，通过raycast.step函数从射线终点开始向相机点步进。并且将每一个中途点都利用setCacheOccupancy函数置一次free。需要注意的是，每一个中途点还利用md_.flag_traverse_容器进行了判断，如果对应序列处的值不是本轮raycast的num,则将其置为b本轮的racastnum.否则说明这一点及之后的点都已经被raycast过了，因此跳出当前射线终点的raycast循环。
+// 当完成md.proj_points容器中所有点的raycast循环后，开始对md_.cache_voxel中的点进行循环判断。首先根据md_.count_hit及md_.count_hit_and_miss中对应位置的值判断当前voxel为障碍物的概率。并且如果当前点的log_odds_update是prob_hit_log，且md_.occupancy_buffer_中对应位置的概率值还没有超过最大值或当前点的log_odds_update是prob_miss_log，且md_.occupancy_buffer_中对应位置的概率值还没有低于最小值。且当前点是在局部地图范围内，则更新md_.occupancy_buffer_中的概率值。
 void GridMap::raycastProcess()
 {
   // if (md_.proj_points_.size() == 0)
@@ -518,6 +526,9 @@ Eigen::Vector3d GridMap::closetPointInMap(const Eigen::Vector3d &pt, const Eigen
   return camera_pt + (min_t - 1e-3) * diff;
 }
 
+// 这一函数首先将局部范围外一圈的点的occupancy_buffer对应值置为：mp_.clamp_min_log_ - mp_.unknown_flag_。
+// 然后将局部地图范围内的地图上一轮的occupancy_buffer_inflate值全部置为0；
+// 紧接着，对局部地图的occupancy_buffer中所有点的值进行一一判断，判断是否超过为障碍物的最低概率mp_.min_occupancy_log_，如若判断，就对该点进行膨胀，并将所有膨胀点的occupancy_buffer_inflate值全部置为1；
 void GridMap::clearAndInflateLocalMap()
 {
   /*clear outside local*/
@@ -594,7 +605,7 @@ void GridMap::clearAndInflateLocalMap()
   // inflate occupied voxels to compensate robot size
 
   int inf_step = ceil(mp_.obstacles_inflation_ / mp_.resolution_);
-  // int inf_step_z = 1;
+  int inf_step_z = 1;
   vector<Eigen::Vector3i> inf_pts(pow(2 * inf_step + 1, 3));
   // inf_pts.resize(4 * inf_step + 3);
   Eigen::Vector3i inf_pt;
@@ -615,6 +626,7 @@ void GridMap::clearAndInflateLocalMap()
 
         if (md_.occupancy_buffer_[toAddress(x, y, z)] > mp_.min_occupancy_log_)
         {
+          inflatePoint(Eigen::Vector3i(x, y, z), inf_step, inf_step_z, inf_pts);
           inflatePoint(Eigen::Vector3i(x, y, z), inf_step, inf_pts);
 
           for (int k = 0; k < (int)inf_pts.size(); ++k)
@@ -631,16 +643,17 @@ void GridMap::clearAndInflateLocalMap()
         }
       }
 
-  // add virtual ceiling to limit flight height
-  if (mp_.virtual_ceil_height_ > -0.5)
-  {
-    int ceil_id = floor((mp_.virtual_ceil_height_ - mp_.map_origin_(2)) * mp_.resolution_inv_);
-    for (int x = md_.local_bound_min_(0); x <= md_.local_bound_max_(0); ++x)
-      for (int y = md_.local_bound_min_(1); y <= md_.local_bound_max_(1); ++y)
-      {
-        md_.occupancy_buffer_inflate_[toAddress(x, y, ceil_id)] = 1;
-      }
-  }
+  // 注释限高
+  // // add virtual ceiling to limit flight height
+  // if (mp_.virtual_ceil_height_ > -0.5)
+  // {
+  //   int ceil_id = floor((mp_.virtual_ceil_height_ - mp_.map_origin_(2)) * mp_.resolution_inv_);
+  //   for (int x = md_.local_bound_min_(0); x <= md_.local_bound_max_(0); ++x)
+  //     for (int y = md_.local_bound_min_(1); y <= md_.local_bound_max_(1); ++y)
+  //     {
+  //       md_.occupancy_buffer_inflate_[toAddress(x, y, ceil_id)] = 1;
+  //     }
+  // }
 }
 
 void GridMap::visCallback(const ros::TimerEvent & /*event*/)
@@ -650,6 +663,9 @@ void GridMap::visCallback(const ros::TimerEvent & /*event*/)
   publishMapInflate(true);
 }
 
+// 这是最终要的一个定时器回调函数，地图节点通过这一回调函数定时更新地图。
+// 其中有两个重要的flag,一个是上文提到的，md.occ_need_update，只有接收到新图像且位于地图范围之内，才会进行接下来的projectDepthImage()及raycastProcess()这两个流程。
+// 同样的，另外一个flag是md.local_updated。这一flag只在raycastProcess中判断深度图投影点数量不为零是才会置为true，这时才会进入clearAndInflateLocalMap（）这一流程，对局部地图进行膨胀和更新。
 void GridMap::updateOccupancyCallback(const ros::TimerEvent & /*event*/)
 {
   if (!md_.occ_need_update_)
@@ -683,6 +699,7 @@ void GridMap::updateOccupancyCallback(const ros::TimerEvent & /*event*/)
   md_.local_updated_ = false;
 }
 
+// 这一函数通过message_filter类接收同步后的最新的相机Pose 与 深度图，同时，如果相机的位置处于全局地图Map_size之外，则就会将md.occ_need_update这一flag置false，反之置为true。
 void GridMap::depthPoseCallback(const sensor_msgs::ImageConstPtr &img,
                                 const geometry_msgs::PoseStampedConstPtr &pose)
 {
@@ -731,7 +748,7 @@ void GridMap::cloudCallback(const sensor_msgs::PointCloud2ConstPtr &img)
 {
 
   pcl::PointCloud<pcl::PointXYZ> latest_cloud;
-  pcl::fromROSMsg(*img, latest_cloud);
+  pcl::fromROSMsg(*img, latest_cloud); //将ROS点云消息类型转换为PCL标准库中点云消息类型
 
   md_.has_cloud_ = true;
 
@@ -753,11 +770,13 @@ void GridMap::cloudCallback(const sensor_msgs::PointCloud2ConstPtr &img)
   pcl::PointXYZ pt;
   Eigen::Vector3d p3d, p3d_inf;
 
+  //obstacles_inflation_=0.099,resolution_=0.1,ceil向上取整，inf_step=1.0
   int inf_step = ceil(mp_.obstacles_inflation_ / mp_.resolution_);
   int inf_step_z = 1;
 
   double max_x, max_y, max_z, min_x, min_y, min_z;
 
+  //map_max_boundary,map_min_boundary表示地图的位置（pos）范围
   min_x = mp_.map_max_boundary_(0);
   min_y = mp_.map_max_boundary_(1);
   min_z = mp_.map_max_boundary_(2);
@@ -774,7 +793,7 @@ void GridMap::cloudCallback(const sensor_msgs::PointCloud2ConstPtr &img)
     /* point inside update range */
     Eigen::Vector3d devi = p3d - md_.camera_pos_;
     Eigen::Vector3i inf_pt;
-
+    //mp_.local_update_range_x=5.5,y=5.5,z=4.5参数
     if (fabs(devi(0)) < mp_.local_update_range_(0) && fabs(devi(1)) < mp_.local_update_range_(1) &&
         fabs(devi(2)) < mp_.local_update_range_(2))
     {
@@ -826,6 +845,7 @@ void GridMap::cloudCallback(const sensor_msgs::PointCloud2ConstPtr &img)
   boundIndex(md_.local_bound_max_);
 }
 
+// 这两函数分别对occupancy_buffer容器中局部地图范围内的所有点进行判断，若值分别超过障碍物最小概率及为1，且不超过高度范围，则将其从voxel序列还原成三维位置点，推入cloud容器中，最后一并发布
 void GridMap::publishMap()
 {
 
@@ -872,6 +892,7 @@ void GridMap::publishMap()
   map_pub_.publish(cloud_msg);
 }
 
+// 这两函数分别对occupancy_buffer_inflate容器中局部地图范围内的所有点进行判断，若值分别超过障碍物最小概率及为1，且不超过高度范围，则将其从voxel序列还原成三维位置点，推入cloud容器中，最后一并发布
 void GridMap::publishMapInflate(bool all_info)
 {
 

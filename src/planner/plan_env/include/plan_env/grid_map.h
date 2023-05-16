@@ -88,7 +88,7 @@ struct MappingData {
   // main map data, occupancy of each voxel and Euclidean distance
 
   std::vector<double> occupancy_buffer_;
-  std::vector<char> occupancy_buffer_inflate_;
+  std::vector<char> occupancy_buffer_inflate_; //栅格占据与否,0表示空闲,1表示占据
 
   // camera position and pose data
 
@@ -114,15 +114,14 @@ struct MappingData {
   int proj_points_cnt;
 
   // flag buffers for speeding up raycasting
-
-  vector<short> count_hit_, count_hit_and_miss_;
+  vector<short> count_hit_, count_hit_and_miss_; //count_hit_统计涉及到的占据体素的次数,占据时会+1;count_hit_and_miss_统计涉及到的体素的次数,占据和空闲均会+1
   vector<char> flag_traverse_, flag_rayend_;
   char raycast_num_;
   queue<Eigen::Vector3i> cache_voxel_;
 
   // range of updating grid
 
-  Eigen::Vector3i local_bound_min_, local_bound_max_;
+  Eigen::Vector3i local_bound_min_, local_bound_max_; //更新栅格的范围
 
   // computation time
 
@@ -202,6 +201,7 @@ private:
   void clearAndInflateLocalMap();
 
   inline void inflatePoint(const Eigen::Vector3i& pt, int step, vector<Eigen::Vector3i>& pts);
+  inline void inflatePoint(const Eigen::Vector3i& pt, int step, int step_z, vector<Eigen::Vector3i>& pts);
   int setCacheOccupancy(Eigen::Vector3d pos, int occ);
   Eigen::Vector3d closetPointInMap(const Eigen::Vector3d& pt, const Eigen::Vector3d& camera_pt);
 
@@ -316,13 +316,18 @@ inline int GridMap::getOccupancy(Eigen::Vector3d pos) {
   return md_.occupancy_buffer_[toAddress(id)] > mp_.min_occupancy_log_ ? 1 : 0;
 }
 
+// change
 inline int GridMap::getInflateOccupancy(Eigen::Vector3d pos) {
   if (!isInMap(pos)) return -1;
 
   Eigen::Vector3i id;
   posToIndex(pos, id);
 
-  return int(md_.occupancy_buffer_inflate_[toAddress(id)]);
+  if (md_.camera_pos_[2]< 0.6)
+    return 0 ;
+  else
+    return int(md_.occupancy_buffer_inflate_[toAddress(id)]);
+  // return int(md_.occupancy_buffer_inflate_[toAddress(id)]);
 }
 
 inline int GridMap::getOccupancy(Eigen::Vector3i id) {
@@ -366,6 +371,35 @@ inline void GridMap::indexToPos(const Eigen::Vector3i& id, Eigen::Vector3d& pos)
 }
 
 inline void GridMap::inflatePoint(const Eigen::Vector3i& pt, int step, vector<Eigen::Vector3i>& pts) {
+  int num = 0;
+
+  /* ---------- + shape inflate ---------- */
+  // for (int x = -step; x <= step; ++x)
+  // {
+  //   if (x == 0)
+  //     continue;
+  //   pts[num++] = Eigen::Vector3i(pt(0) + x, pt(1), pt(2));
+  // }
+  // for (int y = -step; y <= step; ++y)
+  // {
+  //   if (y == 0)
+  //     continue;
+  //   pts[num++] = Eigen::Vector3i(pt(0), pt(1) + y, pt(2));
+  // }
+  // for (int z = -1; z <= 1; ++z)
+  // {
+  //   pts[num++] = Eigen::Vector3i(pt(0), pt(1), pt(2) + z);
+  // }
+
+  /* ---------- all inflate ---------- */
+  for (int x = -step; x <= step; ++x)
+    for (int y = -step; y <= step; ++y)
+      for (int z = -step; z <= step; ++z) {
+        pts[num++] = Eigen::Vector3i(pt(0) + x, pt(1) + y, pt(2) + z);
+      }
+}
+
+inline void GridMap::inflatePoint(const Eigen::Vector3i& pt, int step, int step_z,  vector<Eigen::Vector3i>& pts) {
   int num = 0;
 
   /* ---------- + shape inflate ---------- */
