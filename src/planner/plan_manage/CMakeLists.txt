@@ -67,4 +67,11 @@ add_executable(traj_server src/traj_server.cpp)
 target_link_libraries(traj_server ${catkin_LIBRARIES})
 add_dependencies(traj_server ${${PROJECT_NAME}_EXPORTED_TARGETS})
 
+add_executable(record src/record.cpp)
+target_link_libraries(record ${catkin_LIBRARIES})
+add_dependencies(record ${${PROJECT_NAME}_EXPORTED_TARGETS})
+
+# add_executable(read src/read.cpp)
+# target_link_libraries(read ${catkin_LIBRARIES})
+# add_dependencies(read ${${PROJECT_NAME}_EXPORTED_TARGETS})
 

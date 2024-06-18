@@ -1078,6 +1078,8 @@ namespace ego_planner
 
     //time_satrt = ros::Time::now();
 
+    /*---------------------------三个优化项-------------------------------*/
+
     calcSmoothnessCost(cps_.points, f_smoothness, g_smoothness);
     calcFitnessCost(cps_.points, f_fitness, g_fitness);
     calcFeasibilityCost(cps_.points, f_feasibility, g_feasibility);

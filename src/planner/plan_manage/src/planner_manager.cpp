@@ -211,6 +211,7 @@ namespace ego_planner
     Eigen::MatrixXd ctrl_pts;
     UniformBspline::parameterizeToBspline(ts, point_set, start_end_derivatives, ctrl_pts);
 
+    /*---------------------------吧轨迹拉出障碍物之后使用a×算法搜索------------------------------------*/
     vector<vector<Eigen::Vector3d>> a_star_pathes;
     a_star_pathes = bspline_optimizer_rebound_->initControlPoints(ctrl_pts, true);
 

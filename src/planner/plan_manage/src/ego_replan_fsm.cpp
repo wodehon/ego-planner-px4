@@ -422,6 +422,7 @@ namespace ego_planner
 
     getLocalTarget();
 
+    /*---------------重要的重规划部分（输出信息），多重循环---------------*/
     bool plan_success =
         planner_manager_->reboundReplan(start_pt_, start_vel_, start_acc_, local_target_pt_, local_target_vel_, (have_new_target_ || flag_use_poly_init), flag_randomPolyTraj);
     have_new_target_ = false;
