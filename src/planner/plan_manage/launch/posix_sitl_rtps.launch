@@ -11,8 +11,8 @@
     <arg name="Y" default="0"/>
     <!-- vehicle model and world -->
     <arg name="est" default="ekf2"/>
-    <arg name="vehicle" default="iris_depth_camera"/>
-    <arg name="world_name" default="outdoor_village"/>
+    <arg name="vehicle" default="iris"/>
+    <arg name="world_name" default="outdoor"/>
     <!-- <arg name="world_name" default="empty_world"/> -->
     <!-- <arg name="world" default="$(find mavlink_sitl_gazebo)/worlds/$(arg world_name).world"/> -->
     <arg name="world" default="$(find mavlink_sitl_gazebo)/worlds/outdoor.world"/>
@@ -28,7 +28,7 @@
     <!-- PX4 configs -->
     <arg name="interactive" default="true"/>
     <!-- PX4 SITL and Gazebo -->
-    <include file="$(find px4)/launch/posix_sitl_depth.launch">
+    <include file="$(find px4)/launch/posix_sitl_devel.launch">
         <arg name="x" value="$(arg x)"/>
         <arg name="y" value="$(arg y)"/>
         <arg name="z" value="$(arg z)"/>

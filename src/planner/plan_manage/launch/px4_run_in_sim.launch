@@ -111,7 +111,7 @@
   <!-- 无人机的描述文件，感觉是用于rviz的 -->
   <include file="$(find testbot_description)/launch/testbot.launch"/>
   
-  <include file="$(find ego_planner)/launch/mavros_posix_sitl_rtps.launch"/>
+  <include file="$(find ego_planner)/launch/posix_sitl_rtps.launch"/>
 
 
 
