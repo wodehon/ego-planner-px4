@@ -96,8 +96,9 @@
     <arg name="odometry_topic" value="$(arg odom_topic)" />
   </include> -->
 
-  <node pkg="ego_planner" name="traj_msg_converter" type="trajectory_msg_converter_raw.py" output="screen"/>
-  <node pkg="ego_planner" name="calculate_yaw" type="calculate_raw.py" output="screen"/>
+  <!-- Mavros msg converter and yaw calculater -->
+  <!-- <node pkg="ego_planner" name="traj_msg_converter" type="trajectory_msg_converter_raw.py" output="screen"/> -->
+  <!-- <node pkg="ego_planner" name="calculate_yaw" type="calculate_raw.py" output="screen"/> -->
   <!-- <node pkg="ego_planner" name="traj_msg_converter1" type="trajectory_msg_converter_pos.py" output="screen"/> -->
 
   <!-- <node pkg="ego_planner" name="record" type="record"/> -->
