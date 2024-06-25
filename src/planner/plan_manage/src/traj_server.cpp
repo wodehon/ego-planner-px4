@@ -330,6 +330,7 @@ void cmdCallback(const ros::TimerEvent &e)
 
   pos_cmd_pub.publish(cmd);
 
+  // time,xyz,v_xyz,a_xyz,yaw,yaw_dot
   arc_cmd.data.clear();
 
   arc_cmd.data.push_back(time_now.toSec());
