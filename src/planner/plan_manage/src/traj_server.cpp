@@ -5,13 +5,13 @@
 #include "std_msgs/Empty.h"
 #include "visualization_msgs/Marker.h"
 #include <ros/ros.h>
-#include "std_msgs/Float64MultiArray.h"
+#include "std_msgs/Float32MultiArray.h"
 
 ros::Publisher pos_cmd_pub;
 ros::Publisher pos_cmd_arc_pub;
 
 quadrotor_msgs::PositionCommand cmd;
-std_msgs::Float64MultiArray arc_cmd;
+std_msgs::Float32MultiArray arc_cmd;
 double pos_gain[3] = {0, 0, 0};
 double vel_gain[3] = {0, 0, 0};
 
@@ -333,8 +333,8 @@ void cmdCallback(const ros::TimerEvent &e)
   // time,xyz,v_xyz,a_xyz,yaw,yaw_dot
   arc_cmd.data.clear();
 
-  arc_cmd.data.push_back(time_now.toSec());
-  arc_cmd.data.push_back(time_now.toNSec());
+  // arc_cmd.data.push_back(time_now.toSec());
+  arc_cmd.data.push_back(time_now.toNSec()/1000);
 
   arc_cmd.data.push_back(pos(0));
   arc_cmd.data.push_back(pos(1));
@@ -364,7 +364,7 @@ int main(int argc, char **argv)
 
   pos_cmd_pub = node.advertise<quadrotor_msgs::PositionCommand>("/position_cmd", 50);
 
-  pos_cmd_arc_pub = node.advertise<std_msgs::Float64MultiArray>("/dev/reference_trajectory", 50);
+  pos_cmd_arc_pub = node.advertise<std_msgs::Float32MultiArray>("/reference_trajectory", 50);
 
   ros::Timer cmd_timer = node.createTimer(ros::Duration(0.01), cmdCallback);
 
