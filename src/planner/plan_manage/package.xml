@@ -70,7 +70,8 @@
   <exec_depend>bspline_opt</exec_depend>
   <exec_depend>traj_utils</exec_depend>
   
-
+  <depend>nav_msgs</depend>
+  <depend>tf</depend>
 
   <!-- The export tag contains other, unspecified, tags -->
   <export>

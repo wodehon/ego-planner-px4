@@ -20,6 +20,8 @@ find_package(catkin REQUIRED COMPONENTS
   traj_utils
   message_generation
   cv_bridge
+  nav_msgs
+  tf
 )
 
 # Generate messages in the 'msg' folder
@@ -70,6 +72,10 @@ add_dependencies(traj_server ${${PROJECT_NAME}_EXPORTED_TARGETS})
 add_executable(record src/record.cpp)
 target_link_libraries(record ${catkin_LIBRARIES})
 add_dependencies(record ${${PROJECT_NAME}_EXPORTED_TARGETS})
+
+add_executable(arc_tf src/arc_tf.cpp)
+target_link_libraries(arc_tf ${catkin_LIBRARIES})
+add_dependencies(arc_tf ${${PROJECT_NAME}_EXPORTED_TARGETS})
 
 # add_executable(read src/read.cpp)
 # target_link_libraries(read ${catkin_LIBRARIES})
