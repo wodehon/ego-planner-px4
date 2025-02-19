@@ -24,13 +24,19 @@
     <arg name="verbose" default="false"/>
     <arg name="paused" default="false"/>
     <arg name="respawn_gazebo" default="false"/>
+    <group ns="/camera/rgb/image_raw" >
+        <rosparam param="disable_pub_plugins">
+            - 'image_transport/compressedDepth'
+            - 'image_transport/theora'
+        </rosparam>
+    </group>
     <!-- MAVROS configs -->
     <arg name="fcu_url" default="udp://:14540@localhost:14557"/>
     <arg name="respawn_mavros" default="false"/>
     <!-- PX4 configs -->
     <arg name="interactive" default="true"/>
     <!-- PX4 SITL and Gazebo -->
-    <include file="$(find px4)/launch/posix_sitl_depth.launch">
+    <include file="$(find px4)/launch/posix_sitl_devel.launch">
         <arg name="x" value="$(arg x)"/>
         <arg name="y" value="$(arg y)"/>
         <arg name="z" value="$(arg z)"/>
@@ -47,12 +53,15 @@
         <arg name="paused" value="$(arg paused)"/>
         <arg name="respawn_gazebo" value="$(arg respawn_gazebo)"/>
     </include>
+    <rosparam param="mavros/local_position/tf/send">true</rosparam>
     <!-- MAVROS -->
-    <include file="$(find ego_planner)/launch/px4.launch">
+    <include file="$(find mavros)/launch/px4.launch">
         <!-- GCS link is provided by SITL -->
         <arg name="gcs_url" value=""/>
         <arg name="fcu_url" value="$(arg fcu_url)"/>
         <arg name="respawn_mavros" value="$(arg respawn_mavros)"/>
+        <!-- 在 launch 文件中动态设置 local_position.tf.send 参数 -->
+        <!-- <param name="mavros/local_position/tf/send" value="true"/> -->
     </include>
 
   <!-- <node pkg="tf" type="static_transform_publisher" name="camera_link_base_link"
