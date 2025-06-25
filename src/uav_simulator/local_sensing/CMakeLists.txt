@@ -5,8 +5,8 @@ SET(CMAKE_BUILD_TYPE Release) # Release, RelWithDebInfo
 ADD_COMPILE_OPTIONS(-std=c++11 )
 ADD_COMPILE_OPTIONS(-std=c++14 )
 
-set(ENABLE_CUDA false)
-#set(ENABLE_CUDA true)
+# set(ENABLE_CUDA false)
+set(ENABLE_CUDA true)
 
 if(ENABLE_CUDA)
   find_package(CUDA REQUIRED)
@@ -20,7 +20,7 @@ if(ENABLE_CUDA)
 #       -gencode arch=compute_52,code=sm_52; 
 #       -gencode arch=compute_60,code=sm_60;
 #       -gencode arch=compute_61,code=sm_61;
-      -gencode arch=compute_75,code=sm_75;
+      -gencode arch=compute_72,code=sm_72;
   ) 
 
   SET(CUDA_PROPAGATE_HOST_FLAGS OFF)
@@ -28,6 +28,8 @@ if(ENABLE_CUDA)
   find_package(OpenCV REQUIRED)
   find_package(Eigen3 REQUIRED)
   find_package(Boost REQUIRED COMPONENTS system filesystem)
+
+  set(cv_bridge_DIR /usr/local/share/cv_bridge/cmake)
 
   find_package(catkin REQUIRED COMPONENTS
       roscpp roslib cmake_modules cv_bridge image_transport pcl_ros sensor_msgs geometry_msgs nav_msgs quadrotor_msgs dynamic_reconfigure)

@@ -8,7 +8,7 @@ class OdomToTF
 public:
     OdomToTF()
     {
-        odom_sub_ = nh_.subscribe("/odom", 10, &OdomToTF::odomCallback, this);
+        odom_sub_ = nh_.subscribe("/vicon/odom", 10, &OdomToTF::odomCallback, this);
         timer_ = nh_.createTimer(ros::Duration(0.02), &OdomToTF::timerCallback, this);
     }
 
@@ -28,7 +28,10 @@ private:
         odom_to_base_.transform.translation.x = msg->pose.pose.position.x;
         odom_to_base_.transform.translation.y = msg->pose.pose.position.y;
         odom_to_base_.transform.translation.z = msg->pose.pose.position.z;
-        odom_to_base_.transform.rotation = msg->pose.pose.orientation;
+        odom_to_base_.transform.rotation.x = msg->pose.pose.orientation.x;
+        odom_to_base_.transform.rotation.y = msg->pose.pose.orientation.y;
+        odom_to_base_.transform.rotation.z = msg->pose.pose.orientation.z;
+        odom_to_base_.transform.rotation.w = msg->pose.pose.orientation.w;
         has_odom_data_ = true;
     }
 
